@@ -1,20 +1,13 @@
 const express = require("express");
 const crypto = require("crypto-js");
-const mysql = require("mysql2");
 const db = require("../db");
 const utils = require("../utils");
+const jwt = require("jsonwebtoken");
+const config = require("../config");
 
 const router = express.Router();
 
-// get all users
-router.get("/allusers", (request, response)=>{
-    const query = `select * from user where isDeleted = 0`;
-    db.pool.execute(query, (error, users)=>{
-        response.send(utils.createResult(error, users));
-    })
-})
-
-// register user
+// Public: register user
 router.post("/register", (request, response) => {
   const { firstName, lastName, email, password, phoneNumber } = request.body;
 
@@ -25,12 +18,16 @@ router.post("/register", (request, response) => {
     query,
     [firstName, lastName, email, hashedPassword, phoneNumber],
     (error, result) => {
-      response.send(utils.createResult(error, result));
+      if (error) {
+        response.send(util.createErrorResult(error));
+      } else {
+        response.send(utils.createResult(error, result));
+      }
     }
   );
 });
 
-// login user
+// Public: login user
 router.post("/login", (request, response) => {
   const { email, password } = request.body;
   const query = `select id, firstName, lastName, phoneNumber, isDeleted from user where email = ? and password = ?`;
@@ -50,22 +47,57 @@ router.post("/login", (request, response) => {
             utils.createErrorResult("you have closed your account.")
           );
         } else {
-          console.log(user);
-          response.send(utils.createSuccessResult(user));
+          // create payload for JWT token
+          const payload = { id: user.id };
+
+          // create token
+          const token = jwt.sign(payload, config.secret);
+
+          const customResp = {
+            name: `${user.firstName} ${user.lastName}`,
+            phone: user.phoneNumber,
+            email,
+            token,
+          };
+          response.send(utils.createSuccessResult(customResp));
         }
       }
     }
   });
 });
 
-// delete user
-router.delete("/:id", (request, response)=>{
-    const {id} = request.params
-    const query = `update user set isDeleted = 1 where id = ?`
+// Protected: User Profile
+router.get("/profile", (request, response) => {
+  const statement = `select firstName, lastName, email, phoneNumber from user where id = ?`;
 
-    db.pool.execute(query, [id], (error, result)=>{
-        response.send(utils.createResult(error, result))
-    })
-})
+  db.pool.execute(statement, [request.userId], (error, users) => {
+    if (error) {
+      response.send(utils.createErrorResult(error));
+    } else {
+      if (users.length == 0) {
+        response.send(utils.createErrorResult("User does not exists"));
+      } else {
+        response.send(utils.createSuccessResult(users[0]));
+      }
+    }
+  });
+});
+
+// Protected: delete user
+router.delete("/close", (request, response) => {
+  const query = `update user set isDeleted = 1 where id = ?`;
+
+  db.pool.execute(query, [request.userId], (error, result) => {
+    response.send(utils.createResult(error, result));
+  });
+});
+
+// get all users
+// router.get("/allusers", (request, response) => {
+//   const query = `select * from user where isDeleted = 0`;
+//   db.pool.execute(query, (error, users) => {
+//     response.send(utils.createResult(error, users));
+//   });
+// });
 
 module.exports = router;
