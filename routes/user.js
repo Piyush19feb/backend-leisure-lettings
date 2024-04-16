@@ -28,13 +28,9 @@ router.post("/register", (request, response) => {
           "Welcome to leisure-lettings app",
           `          <h3>Hi ${firstName},</h3>
           <br/>
-          Thank you for registration...
-          ..
-          ..
-          ..
-          ..
-
+          Thank you for registration
           <br/>
+          <hr/><hr/><hr/>
           Thank you,
           leisure-lettings Team
         `,
