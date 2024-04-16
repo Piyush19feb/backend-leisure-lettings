@@ -4,6 +4,7 @@ const db = require("../db");
 const utils = require("../utils");
 const jwt = require("jsonwebtoken");
 const config = require("../config");
+const mailer = require("../mailer");
 
 const router = express.Router();
 
@@ -21,7 +22,28 @@ router.post("/register", (request, response) => {
       if (error) {
         response.send(util.createErrorResult(error));
       } else {
-        response.send(utils.createResult(error, result));
+        // send an email
+        mailer.sendEmail(
+          email,
+          "Welcome to leisure-lettings app",
+          `          <h3>Hi ${firstName},</h3>
+          <br/>
+          Thank you for registration...
+          ..
+          ..
+          ..
+          ..
+
+          <br/>
+          Thank you,
+          leisure-lettings Team
+        `,
+          () => {
+            response.send(
+              utils.createSuccessResult("User Registered successfully !!")
+            );
+          }
+        );
       }
     }
   );
